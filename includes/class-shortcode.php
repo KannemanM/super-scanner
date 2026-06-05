@@ -26,9 +26,7 @@ class Super_Scanner_Shortcode {
             array(),
             SUPER_SCANNER_VERSION
         );
-    }
 
-    private function enqueue_widget_assets() {
         wp_enqueue_style(
             'font-awesome',
             'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
@@ -75,7 +73,6 @@ class Super_Scanner_Shortcode {
     }
 
     public function render_widget() {
-        $this->enqueue_widget_assets();
 
         ob_start();
         ?>
