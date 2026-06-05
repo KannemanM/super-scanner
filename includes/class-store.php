@@ -2,22 +2,27 @@
 
 defined('ABSPATH') || exit;
 
-class Super_Scanner_Vtex_Api {
+abstract class Super_Scanner_Store {
 
-    const BASE_URL = 'https://www.masonline.com.ar/api/catalog_system/pub/products/search';
     const CACHE_TTL = 300;
 
-    public static function get_product_by_ean($ean) {
-        $cache_key = 'super_scanner_ean_' . sanitize_key($ean);
+    abstract public function get_slug();
+    abstract public function get_name();
+    abstract public function get_base_url();
+    abstract public function get_sales_channels();
+    abstract public function get_ean_filter_prefix();
+
+    public function get_product_by_ean($ean) {
+        $cache_key = 'ss_store_' . $this->get_slug() . '_' . sanitize_key($ean);
         $cached = get_transient($cache_key);
         if (false !== $cached) {
             return $cached;
         }
 
-        $channels = apply_filters('super_scanner_sc_list', [1, 2, 3, 4, 5, 7]);
+        $channels = $this->get_sales_channels();
 
         foreach ($channels as $sc) {
-            $result = self::query_vtex($ean, $sc);
+            $result = $this->query_vtex($ean, $sc);
             if (is_wp_error($result)) {
                 continue;
             }
@@ -30,20 +35,21 @@ class Super_Scanner_Vtex_Api {
 
         $not_found = array(
             'success' => false,
-            'message' => 'Producto no encontrado en Mas Online',
+            'store'   => $this->get_slug(),
+            'message' => 'Producto no encontrado en ' . $this->get_name(),
         );
         $ttl = apply_filters('super_scanner_cache_ttl', self::CACHE_TTL);
         set_transient($cache_key, $not_found, $ttl);
         return $not_found;
     }
 
-    private static function query_vtex($ean, $sc) {
+    protected function query_vtex($ean, $sc) {
         $url = add_query_arg(
             array(
-                'fq' => 'alternateIds_Ean:' . $ean,
+                'fq' => $this->get_ean_filter_prefix() . ':' . $ean,
                 'sc' => $sc,
             ),
-            self::BASE_URL
+            $this->get_base_url()
         );
 
         $args = array(
@@ -67,10 +73,10 @@ class Super_Scanner_Vtex_Api {
             return array();
         }
 
-        return self::format_product($productos[0]);
+        return $this->format_product($productos[0]);
     }
 
-    private static function format_product($producto) {
+    protected function format_product($producto) {
         if (empty($producto['items'][0])) {
             return array();
         }
@@ -89,6 +95,8 @@ class Super_Scanner_Vtex_Api {
 
         return array(
             'success'      => true,
+            'store'        => $this->get_slug(),
+            'store_name'   => $this->get_name(),
             'nombre'       => $producto['productName'] ?? '',
             'marca'        => $producto['brand'] ?? '',
             'imagen'       => $sku['images'][0]['imageUrl'] ?? '',

@@ -1,0 +1,209 @@
+<!-- =============================================
+     SuperScanner — Widget para Elementor (HTML)
+     Pegar esto en un widget HTML de Elementor.
+     Requiere: Font Awesome (cargado por el tema).
+     ============================================= -->
+
+<!-- 1. Librería del Escáner -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+<!-- 2. Contenedor principal -->
+<div class="ss-container">
+
+    <!-- Barra de búsqueda -->
+    <div class="ss-search-bar">
+        <input type="text" id="ss-ean-input" placeholder="Ingresá el código de barras..." autocomplete="off">
+        <button class="ss-btn-camera" id="ss-btn-camera" title="Escanear código de barras">
+            <i class="fas fa-camera"></i>
+        </button>
+    </div>
+
+    <!-- Botón de consulta -->
+    <button class="ss-btn-consultar" id="ss-btn-consultar" disabled>CONSULTAR</button>
+
+    <!-- Visor de la cámara (oculto por defecto) -->
+    <div id="ss-reader" style="display:none;"></div>
+
+    <!-- Resultados -->
+    <div id="ss-resultados" class="ss-resultados"></div>
+
+</div>
+
+<!-- 3. Lógica -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // ───────────────────────────────────────────
+    // Configuración
+    // ───────────────────────────────────────────
+    const API_BASE = "https://martinkanneman.is-a.dev/wp-json/super-scanner/v1/precio";
+    const STORES = [
+        { slug: "masonline", label: "Mas Online", color: "#e53935" }
+        // Futuros supermercados:
+        // { slug: "coto",      label: "Coto",       color: "#004d99" },
+        // { slug: "disco",     label: "Disco",      color: "#e67e22" },
+    ];
+
+    // ───────────────────────────────────────────
+    // Estado
+    // ───────────────────────────────────────────
+    let scanner = null;
+    let isScanning = false;
+
+    // ───────────────────────────────────────────
+    // DOM refs
+    // ───────────────────────────────────────────
+    const input    = document.getElementById("ss-ean-input");
+    const btnCam   = document.getElementById("ss-btn-camera");
+    const btnCons  = document.getElementById("ss-btn-consultar");
+    const reader   = document.getElementById("ss-reader");
+    const results  = document.getElementById("ss-resultados");
+
+    // ───────────────────────────────────────────
+    // Validar EAN en tiempo real
+    // ───────────────────────────────────────────
+    function isValidEAN(val) {
+        return /^\d{8,13}$/.test(val.trim());
+    }
+
+    input.addEventListener("input", function () {
+        btnCons.disabled = !isValidEAN(this.value);
+    });
+
+    // ───────────────────────────────────────────
+    // Escáner
+    // ───────────────────────────────────────────
+    btnCam.addEventListener("click", function () {
+        if (isScanning) {
+            stopScanner();
+        } else {
+            startScanner();
+        }
+    });
+
+    function startScanner() {
+        if (scanner) scanner.stop();
+        reader.style.display = "block";
+        btnCam.classList.add("scanning");
+        isScanning = true;
+
+        scanner = new Html5Qrcode("ss-reader");
+        scanner.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            function (decodedText) {
+                input.value = decodedText;
+                btnCons.disabled = false;
+                if (navigator.vibrate) navigator.vibrate(100);
+                stopScanner();
+            },
+            function () { /* fallos silenciosos */ }
+        ).catch(function (err) {
+            console.error("Error al iniciar cámara:", err);
+            stopScanner();
+        });
+    }
+
+    function stopScanner() {
+        if (scanner) {
+            try { scanner.stop(); } catch (e) {}
+        }
+        scanner = null;
+        reader.style.display = "none";
+        btnCam.classList.remove("scanning");
+        isScanning = false;
+    }
+
+    // ───────────────────────────────────────────
+    // Consulta a la API
+    // ───────────────────────────────────────────
+    btnCons.addEventListener("click", async function () {
+        const ean = input.value.trim();
+        if (!isValidEAN(ean)) return;
+
+        btnCons.disabled = true;
+        btnCons.textContent = "Consultando…";
+        results.innerHTML = "<div class='ss-loading'><i class='fas fa-spinner fa-spin'></i> Consultando supermercados…</div>";
+
+        const responses = await Promise.allSettled(
+            STORES.map(function (s) {
+                return fetch(API_BASE + "/" + s.slug + "/" + ean)
+                    .then(function (r) { return r.json(); });
+            })
+        );
+
+        btnCons.disabled = false;
+        btnCons.textContent = "CONSULTAR";
+        renderResults(responses);
+    });
+
+    // ───────────────────────────────────────────
+    // Renderizar resultados
+    // ───────────────────────────────────────────
+    function renderResults(responses) {
+        let html = "";
+
+        responses.forEach(function (res, i) {
+            var store = STORES[i];
+            var data  = res.status === "fulfilled" ? res.value : null;
+
+            html += '<div class="ss-store-card">';
+            html += '<div class="ss-store-header" style="background:' + store.color + '">';
+            html += '<i class="fas fa-store"></i> ' + store.label;
+            html += '</div>';
+
+            if (data && data.success) {
+                var img = data.imagen || "";
+                html += '<div class="ss-store-body">';
+                if (img) {
+                    html += '<div class="ss-store-imagen">';
+                    html += '<img src="' + img + '" alt="' + escapeHtml(data.nombre) + '" loading="lazy">';
+                    html += '</div>';
+                }
+                html += '<div class="ss-store-info">';
+                html += '<div class="ss-store-nombre">' + escapeHtml(data.nombre) + '</div>';
+                html += '<div class="ss-store-marca">' + escapeHtml(data.marca) + '</div>';
+                html += '<div class="ss-store-precios">';
+                html += '<span class="ss-store-precio-web">$ ' + formatPrice(data.precio_web) + '</span>';
+                if (data.tiene_desc) {
+                    html += '<span class="ss-store-precio-lista">$ ' + formatPrice(data.precio_lista) + '</span>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            } else {
+                html += '<div class="ss-store-no-disponible">';
+                html += '<i class="fas fa-times-circle"></i> No disponible en ' + store.label;
+                html += '</div>';
+            }
+
+            html += '</div>';
+        });
+
+        results.innerHTML = html;
+    }
+
+    // ───────────────────────────────────────────
+    // Utilidades
+    // ───────────────────────────────────────────
+    function formatPrice(n) {
+        return Number(n).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function escapeHtml(str) {
+        var div = document.createElement("div");
+        div.appendChild(document.createTextNode(str || ""));
+        return div.innerHTML;
+    }
+
+    // ───────────────────────────────────────────
+    // Enter en el input → consultar
+    // ───────────────────────────────────────────
+    input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && !btnCons.disabled) {
+            btnCons.click();
+        }
+    });
+
+});
+</script>

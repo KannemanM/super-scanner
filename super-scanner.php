@@ -17,12 +17,14 @@ define('SUPER_SCANNER_VERSION', '1.0.0');
 define('SUPER_SCANNER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SUPER_SCANNER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-require_once SUPER_SCANNER_PLUGIN_DIR . 'includes/class-vtex-api.php';
+require_once SUPER_SCANNER_PLUGIN_DIR . 'includes/class-store.php';
+require_once SUPER_SCANNER_PLUGIN_DIR . 'stores/class-store-masonline.php';
 require_once SUPER_SCANNER_PLUGIN_DIR . 'includes/class-rest-controller.php';
 require_once SUPER_SCANNER_PLUGIN_DIR . 'includes/class-shortcode.php';
 
 function super_scanner_init() {
-    Super_Scanner_REST_Controller::get_instance();
+    $controller = Super_Scanner_REST_Controller::get_instance();
+    $controller->add_store(new Super_Scanner_Store_MasOnline());
     Super_Scanner_Shortcode::get_instance();
 }
 add_action('plugins_loaded', 'super_scanner_init');

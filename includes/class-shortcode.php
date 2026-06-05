@@ -36,7 +36,8 @@ class Super_Scanner_Shortcode {
             return '<div class="super-scanner-error">Código EAN inválido.</div>';
         }
 
-        $result = Super_Scanner_Vtex_Api::get_product_by_ean($atts['ean']);
+        $store = new Super_Scanner_Store_MasOnline();
+        $result = $store->get_product_by_ean($atts['ean']);
 
         if (!isset($result['success']) || true !== $result['success']) {
             return '<div class="super-scanner-error">' . esc_html($result['message'] ?? 'Producto no encontrado') . '</div>';
