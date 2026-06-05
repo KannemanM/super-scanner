@@ -19,8 +19,16 @@ abstract class Super_Scanner_Store {
             return $cached;
         }
 
-        $channels = $this->get_sales_channels();
+        // Try without sales channel first (some stores like Vea don't use sc)
+        $result = $this->query_vtex($ean, null);
+        if (!is_wp_error($result) && !empty($result)) {
+            $ttl = apply_filters('super_scanner_cache_ttl', self::CACHE_TTL);
+            set_transient($cache_key, $result, $ttl);
+            return $result;
+        }
 
+        // Then try with each configured sales channel
+        $channels = $this->get_sales_channels();
         foreach ($channels as $sc) {
             $result = $this->query_vtex($ean, $sc);
             if (is_wp_error($result)) {
@@ -44,13 +52,13 @@ abstract class Super_Scanner_Store {
     }
 
     protected function query_vtex($ean, $sc) {
-        $url = add_query_arg(
-            array(
-                'fq' => $this->get_ean_filter_prefix() . ':' . $ean,
-                'sc' => $sc,
-            ),
-            $this->get_base_url()
+        $query_args = array(
+            'fq' => $this->get_ean_filter_prefix() . ':' . $ean,
         );
+        if ($sc !== null) {
+            $query_args['sc'] = $sc;
+        }
+        $url = add_query_arg($query_args, $this->get_base_url());
 
         $args = array(
             'timeout' => 10,

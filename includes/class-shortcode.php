@@ -58,6 +58,7 @@ class Super_Scanner_Shortcode {
             $colors = array(
                 'masonline' => '#e53935',
                 'carrefour' => '#004d99',
+                'vea'       => '#f39c12',
             );
             $store_data[] = array(
                 'slug'  => $slug,
