@@ -28,7 +28,7 @@ class Super_Scanner_Shortcode {
         );
 
         wp_enqueue_style(
-            'font-awesome',
+            'super-scanner-fontawesome',
             'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
             array(),
             null
