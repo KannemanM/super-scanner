@@ -24,7 +24,7 @@ class Super_Scanner_Shortcode {
             'super-scanner-style',
             SUPER_SCANNER_PLUGIN_URL . 'assets/style.css',
             array(),
-            SUPER_SCANNER_VERSION
+            filemtime(SUPER_SCANNER_PLUGIN_DIR . 'assets/style.css')
         );
 
         wp_enqueue_style(
@@ -46,7 +46,7 @@ class Super_Scanner_Shortcode {
             'super-scanner-widget',
             SUPER_SCANNER_PLUGIN_URL . 'assets/scanner.js',
             array('html5-qrcode'),
-            SUPER_SCANNER_VERSION,
+            filemtime(SUPER_SCANNER_PLUGIN_DIR . 'assets/scanner.js'),
             true
         );
 
