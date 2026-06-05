@@ -130,6 +130,7 @@ abstract class Super_Scanner_Store {
             'nombre'       => $producto['productName'] ?? '',
             'marca'        => $producto['brand'] ?? '',
             'imagen'       => $sku['images'][0]['imageUrl'] ?? '',
+            'link'         => $producto['link'] ?? '',
             'precio_lista' => $list_price,
             'precio_web'   => $price,
             'tiene_desc'   => $list_price > $price,

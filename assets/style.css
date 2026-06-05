@@ -155,6 +155,15 @@
     color: #333;
 }
 
+.ss-store-nombre a {
+    color: #007cba;
+    text-decoration: none;
+}
+
+.ss-store-nombre a:hover {
+    text-decoration: underline;
+}
+
 .ss-store-marca {
     margin: 0 0 8px;
     font-size: 12px;

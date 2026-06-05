@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     html += '</div>';
                 }
                 html += '<div class="ss-store-info">';
-                html += '<div class="ss-store-nombre">' + escapeHtml(data.nombre) + '</div>';
+                html += '<div class="ss-store-nombre"><a href="' + data.link + '" target="_blank" rel="noopener">' + escapeHtml(data.nombre) + '</a></div>';
                 html += '<div class="ss-store-marca">' + escapeHtml(data.marca) + '</div>';
                 html += '<div class="ss-store-precios">';
                 html += '<span class="ss-store-precio-web">$ ' + formatPrice(data.precio_web) + '</span>';
