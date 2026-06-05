@@ -15,16 +15,83 @@ class Super_Scanner_Shortcode {
 
     private function __construct() {
         add_shortcode('super_scanner_precio', array($this, 'render'));
-        add_action('wp_enqueue_scripts', array($this, 'enqueue_styles'));
+        add_shortcode('super_scanner', array($this, 'render_widget'));
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_assets'));
     }
 
-    public function enqueue_styles() {
+    public function enqueue_assets() {
         wp_enqueue_style(
             'super-scanner-style',
             SUPER_SCANNER_PLUGIN_URL . 'assets/style.css',
             array(),
             SUPER_SCANNER_VERSION
         );
+    }
+
+    private function enqueue_widget_assets() {
+        wp_enqueue_style(
+            'font-awesome',
+            'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
+            array(),
+            null
+        );
+
+        wp_enqueue_script(
+            'html5-qrcode',
+            'https://unpkg.com/html5-qrcode',
+            array(),
+            null,
+            true
+        );
+
+        wp_enqueue_script(
+            'super-scanner-widget',
+            SUPER_SCANNER_PLUGIN_URL . 'assets/scanner.js',
+            array('html5-qrcode'),
+            SUPER_SCANNER_VERSION,
+            true
+        );
+
+        $controller = Super_Scanner_REST_Controller::get_instance();
+        $stores = $controller->get_stores();
+
+        $store_data = array();
+        foreach ($stores as $slug => $store) {
+            $colors = array(
+                'masonline' => '#e53935',
+                'carrefour' => '#004d99',
+            );
+            $store_data[] = array(
+                'slug'  => $slug,
+                'label' => $store->get_name(),
+                'color' => $colors[$slug] ?? '#333',
+            );
+        }
+
+        wp_localize_script('super-scanner-widget', 'SuperScannerData', array(
+            'apiBase' => rest_url('super-scanner/v1/precio'),
+            'stores'  => $store_data,
+        ));
+    }
+
+    public function render_widget() {
+        $this->enqueue_widget_assets();
+
+        ob_start();
+        ?>
+        <div class="ss-container" id="ss-container">
+            <div class="ss-search-bar">
+                <input type="text" id="ss-ean-input" placeholder="Ingresá el código de barras..." autocomplete="off">
+                <button class="ss-btn-camera" id="ss-btn-camera" title="Escanear código de barras">
+                    <i class="fas fa-camera"></i>
+                </button>
+            </div>
+            <button class="ss-btn-consultar" id="ss-btn-consultar" disabled>Comparar precios</button>
+            <div id="ss-reader" style="display:none;"></div>
+            <div id="ss-resultados" class="ss-resultados"></div>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 
     public function render($atts) {
