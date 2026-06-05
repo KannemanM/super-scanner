@@ -4,13 +4,28 @@ defined('ABSPATH') || exit;
 
 abstract class Super_Scanner_Store {
 
-    const CACHE_TTL = 300;
+    const CACHE_TTL = 900;
 
     abstract public function get_slug();
     abstract public function get_name();
     abstract public function get_base_url();
     abstract public function get_sales_channels();
     abstract public function get_ean_filter_prefix();
+
+    private static function get_random_user_agent() {
+        $agents = array(
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.113 Mobile Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 13; SM-S23) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.6367.83 Mobile Safari/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/124.0.6367.111 Mobile/15E148 Safari/604.1',
+        );
+        return $agents[array_rand($agents)];
+    }
 
     public function get_product_by_ean($ean) {
         $cache_key = 'ss_store_' . $this->get_slug() . '_' . sanitize_key($ean);
@@ -63,12 +78,19 @@ abstract class Super_Scanner_Store {
         $args = array(
             'timeout' => 10,
             'headers' => array(
-                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent' => self::get_random_user_agent(),
                 'Accept'     => 'application/json',
             ),
         );
 
         $response = wp_remote_get($url, $args);
+
+        // Retry once with backoff if there's a transport error
+        if (is_wp_error($response)) {
+            sleep(1);
+            $args['headers']['User-Agent'] = self::get_random_user_agent();
+            $response = wp_remote_get($url, $args);
+        }
 
         if (is_wp_error($response)) {
             return $response;
